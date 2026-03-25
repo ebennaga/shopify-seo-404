@@ -2,13 +2,23 @@
 const nextConfig = {
   reactStrictMode: false,
 
-  // Matikan paksa HTTPS redirect bawaan Next.js
-  // Ini penting saat development dengan ngrok
   async headers() {
     return [
       {
-        source: '/(.*)',
-        headers: [{ key: 'X-Frame-Options', value: 'ALLOWALL' }],
+        source: "/(.*)",
+        headers: [
+          // Izinkan Shopify embed app dalam iframe
+          {
+            key: "Content-Security-Policy",
+            value:
+              "frame-ancestors https://admin.shopify.com https://*.myshopify.com;",
+          },
+          // Hapus X-Frame-Options karena konflik dengan CSP
+          {
+            key: "X-Frame-Options",
+            value: "ALLOWALL",
+          },
+        ],
       },
     ];
   },
