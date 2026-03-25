@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 // ── Tipe Data ──
 type Error404 = {
@@ -9,7 +9,7 @@ type Error404 = {
   url: string;
   suggested_target: string;
   hits: number;
-  status: 'pending' | 'fixed' | 'ignored';
+  status: "pending" | "fixed" | "ignored";
   last_seen: string;
 };
 
@@ -31,11 +31,11 @@ type Pattern = {
   matched_count: number;
 };
 
-// ── Komponen Utama ──
-export default function Dashboard() {
+// ── Komponen Dashboard (dipisah supaya bisa dibungkus Suspense) ──
+function DashboardContent() {
   const params = useSearchParams();
-  const shop = params.get('shop') || '';
-  const [tab, setTab] = useState<'errors' | 'redirects' | 'patterns'>('errors');
+  const shop = params.get("shop") || "";
+  const [tab, setTab] = useState<"errors" | "redirects" | "patterns">("errors");
   const [errors, setErrors] = useState<Error404[]>([]);
   const [redirects, setRedirects] = useState<Redirect[]>([]);
   const [patterns, setPatterns] = useState<Pattern[]>([]);
@@ -46,16 +46,16 @@ export default function Dashboard() {
   const [bulkLoading, setBulkLoading] = useState(false);
 
   // Form states
-  const [addFrom, setAddFrom] = useState('');
-  const [addTo, setAddTo] = useState('');
+  const [addFrom, setAddFrom] = useState("");
+  const [addTo, setAddTo] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
-  const [bulkCSV, setBulkCSV] = useState('');
-  const [pName, setPName] = useState('');
-  const [pMatch, setPMatch] = useState('');
-  const [pTarget, setPTarget] = useState('');
+  const [bulkCSV, setBulkCSV] = useState("");
+  const [pName, setPName] = useState("");
+  const [pMatch, setPMatch] = useState("");
+  const [pTarget, setPTarget] = useState("");
 
-  const showToast = (msg: string, type = 'success') => {
+  const showToast = (msg: string, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
@@ -92,9 +92,9 @@ export default function Dashboard() {
 
   // ── Actions ──
   const fixOne = async (error: Error404) => {
-    const res = await fetch('/api/redirects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const res = await fetch("/api/redirects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         shop,
         from_path: error.url,
@@ -108,24 +108,24 @@ export default function Dashboard() {
       fetchRedirects();
     } else {
       const j = await res.json();
-      showToast(j.error || 'Gagal', 'error');
+      showToast(j.error || "Gagal", "error");
     }
   };
 
   const ignoreError = async (id: string) => {
-    await fetch('/api/errors', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status: 'ignored' }),
+    await fetch("/api/errors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, status: "ignored" }),
     });
     fetchErrors();
-    showToast('Error diabaikan');
+    showToast("Error diabaikan");
   };
 
   const updateSuggestion = async (id: string, val: string) => {
-    await fetch('/api/errors', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/errors", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, suggested_target: val }),
     });
     fetchErrors();
@@ -133,10 +133,10 @@ export default function Dashboard() {
 
   const bulkFixAll = async () => {
     setBulkLoading(true);
-    const res = await fetch('/api/redirects/bulk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shop, mode: 'fix_all' }),
+    const res = await fetch("/api/redirects/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop, mode: "fix_all" }),
     });
     const json = await res.json();
     setBulkLoading(false);
@@ -146,57 +146,57 @@ export default function Dashboard() {
   };
 
   const addRedirect = async () => {
-    if (!addFrom || !addTo) return showToast('Isi kedua field URL', 'warning');
-    const res = await fetch('/api/redirects', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    if (!addFrom || !addTo) return showToast("Isi kedua field URL", "warning");
+    const res = await fetch("/api/redirects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ shop, from_path: addFrom, to_path: addTo }),
     });
     if (res.ok) {
-      setAddFrom('');
-      setAddTo('');
+      setAddFrom("");
+      setAddTo("");
       setShowAddModal(false);
-      showToast('✓ Redirect ditambahkan!');
+      showToast("✓ Redirect ditambahkan!");
       fetchRedirects();
     } else {
       const j = await res.json();
-      showToast(j.error || 'Gagal', 'error');
+      showToast(j.error || "Gagal", "error");
     }
   };
 
   const deleteRedirect = async (id: string) => {
-    await fetch('/api/redirects', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/redirects", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, shop }),
     });
-    showToast('Redirect dihapus');
+    showToast("Redirect dihapus");
     fetchRedirects();
   };
 
   const importCSV = async () => {
-    if (!bulkCSV.trim()) return showToast('Paste CSV dulu', 'warning');
+    if (!bulkCSV.trim()) return showToast("Paste CSV dulu", "warning");
     const pairs = bulkCSV
-      .split('\n')
+      .split("\n")
       .filter((l) => l.trim())
       .map((line) => {
-        const [from, to] = line.split(',').map((s) => s.trim());
+        const [from, to] = line.split(",").map((s) => s.trim());
         return { from, to };
       })
-      .filter((p) => p.from?.startsWith('/') && p.to?.startsWith('/'));
+      .filter((p) => p.from?.startsWith("/") && p.to?.startsWith("/"));
 
     if (!pairs.length)
-      return showToast('Format salah. Gunakan: /from,/to', 'warning');
+      return showToast("Format salah. Gunakan: /from,/to", "warning");
 
     setBulkLoading(true);
-    const res = await fetch('/api/redirects/bulk', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ shop, mode: 'import', pairs }),
+    const res = await fetch("/api/redirects/bulk", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shop, mode: "import", pairs }),
     });
     const json = await res.json();
     setBulkLoading(false);
-    setBulkCSV('');
+    setBulkCSV("");
     setShowBulkModal(false);
     showToast(`✓ ${json.created} redirect diimport`);
     fetchRedirects();
@@ -204,10 +204,10 @@ export default function Dashboard() {
 
   const savePattern = async () => {
     if (!pName || !pMatch || !pTarget)
-      return showToast('Isi semua field pattern', 'warning');
-    const res = await fetch('/api/patterns', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      return showToast("Isi semua field pattern", "warning");
+    const res = await fetch("/api/patterns", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         shop,
         name: pName,
@@ -216,38 +216,37 @@ export default function Dashboard() {
       }),
     });
     if (res.ok) {
-      setPName('');
-      setPMatch('');
-      setPTarget('');
-      showToast('✓ Pattern disimpan!');
+      setPName("");
+      setPMatch("");
+      setPTarget("");
+      showToast("✓ Pattern disimpan!");
       fetchPatterns();
     }
   };
 
   const togglePattern = async (id: string, current: boolean) => {
-    await fetch('/api/patterns', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/patterns", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id, is_active: !current }),
     });
     fetchPatterns();
-    showToast(current ? 'Pattern dinonaktifkan' : 'Pattern diaktifkan');
+    showToast(current ? "Pattern dinonaktifkan" : "Pattern diaktifkan");
   };
 
   const deletePattern = async (id: string) => {
-    await fetch('/api/patterns', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch("/api/patterns", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
     fetchPatterns();
-    showToast('Pattern dihapus');
+    showToast("Pattern dihapus");
   };
 
-  const pending = errors.filter((e) => e.status === 'pending');
-  const fixed = errors.filter((e) => e.status === 'fixed');
+  const pending = errors.filter((e) => e.status === "pending");
+  const fixed = errors.filter((e) => e.status === "fixed");
 
-  // ── RENDER ──
   return (
     <div style={s.root}>
       {/* SIDEBAR */}
@@ -255,23 +254,23 @@ export default function Dashboard() {
         <div style={s.logoWrap}>
           <div style={s.logoIcon}>↩</div>
           <div style={s.logoText}>
-            SEO<span style={{ color: '#60a5fa' }}>Redirect</span>
+            SEO<span style={{ color: "#60a5fa" }}>Redirect</span>
           </div>
         </div>
         <div style={s.storeChip}>
           <div style={s.dot} />
-          <div style={s.storeName}>{shop || 'No store'}</div>
+          <div style={s.storeName}>{shop || "No store"}</div>
         </div>
-        <nav style={{ padding: '12px' }}>
+        <nav style={{ padding: "12px" }}>
           {(
             [
-              { id: 'errors', label: '⚠️  404 Errors', count: pending.length },
+              { id: "errors", label: "⚠️  404 Errors", count: pending.length },
               {
-                id: 'redirects',
-                label: '↩  Redirects',
+                id: "redirects",
+                label: "↩  Redirects",
                 count: redirects.length,
               },
-              { id: 'patterns', label: '⚡  Auto Patterns', count: 0 },
+              { id: "patterns", label: "⚡  Auto Patterns", count: 0 },
             ] as const
           ).map((item) => (
             <div
@@ -284,7 +283,7 @@ export default function Dashboard() {
                 <span
                   style={{
                     ...s.navBadge,
-                    background: item.id === 'errors' ? '#ef4444' : '#2563eb',
+                    background: item.id === "errors" ? "#ef4444" : "#2563eb",
                   }}
                 >
                   {item.count}
@@ -293,29 +292,28 @@ export default function Dashboard() {
             </div>
           ))}
         </nav>
-        {/* Stats di sidebar bawah */}
         <div style={s.sidebarStats}>
           <div style={s.sidebarStat}>
-            <div style={{ color: '#ef4444', fontWeight: 700, fontSize: 20 }}>
+            <div style={{ color: "#ef4444", fontWeight: 700, fontSize: 20 }}>
               {pending.length}
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>
               Pending
             </div>
           </div>
           <div style={s.sidebarStat}>
-            <div style={{ color: '#10b981', fontWeight: 700, fontSize: 20 }}>
+            <div style={{ color: "#10b981", fontWeight: 700, fontSize: 20 }}>
               {fixed.length}
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>
               Fixed
             </div>
           </div>
           <div style={s.sidebarStat}>
-            <div style={{ color: '#60a5fa', fontWeight: 700, fontSize: 20 }}>
+            <div style={{ color: "#60a5fa", fontWeight: 700, fontSize: 20 }}>
               {redirects.length}
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)' }}>
+            <div style={{ fontSize: 11, color: "rgba(255,255,255,.4)" }}>
               Rules
             </div>
           </div>
@@ -324,15 +322,14 @@ export default function Dashboard() {
 
       {/* MAIN */}
       <div style={s.main}>
-        {/* TOPBAR */}
         <div style={s.topbar}>
           <div style={s.pageTitle}>
-            {tab === 'errors' && '404 Error Monitor'}
-            {tab === 'redirects' && 'Redirect Rules'}
-            {tab === 'patterns' && 'Auto-Redirect Patterns'}
+            {tab === "errors" && "404 Error Monitor"}
+            {tab === "redirects" && "Redirect Rules"}
+            {tab === "patterns" && "Auto-Redirect Patterns"}
           </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            {tab === 'errors' && (
+          <div style={{ display: "flex", gap: 10 }}>
+            {tab === "errors" && (
               <button
                 style={{
                   ...s.btnPrimary,
@@ -342,11 +339,11 @@ export default function Dashboard() {
                 disabled={bulkLoading || !pending.length}
               >
                 {bulkLoading
-                  ? 'Memproses...'
+                  ? "Memproses..."
                   : `⚡ Fix Semua (${pending.length})`}
               </button>
             )}
-            {tab === 'redirects' && (
+            {tab === "redirects" && (
               <>
                 <button
                   style={s.btnWhite}
@@ -358,40 +355,34 @@ export default function Dashboard() {
                   style={s.btnPrimary}
                   onClick={() => setShowAddModal(true)}
                 >
-                  + Tambah Redirect
+                  + Tambah
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* CONTENT */}
         <div style={s.content}>
-          {/* ── TAB: 404 ERRORS ── */}
-          {tab === 'errors' && (
+          {/* TAB: 404 ERRORS */}
+          {tab === "errors" && (
             <>
-              {/* Stats row */}
               <div style={s.statsRow}>
                 {[
                   {
-                    label: 'Pending 404',
+                    label: "Pending 404",
                     value: pending.length,
-                    color: '#ef4444',
+                    color: "#ef4444",
                   },
+                  { label: "Fixed", value: fixed.length, color: "#10b981" },
                   {
-                    label: 'Sudah Fixed',
-                    value: fixed.length,
-                    color: '#10b981',
-                  },
-                  {
-                    label: 'Total Errors',
+                    label: "Total Error",
                     value: errors.length,
-                    color: '#6b7280',
+                    color: "#6b7280",
                   },
                   {
-                    label: 'Total Rules',
+                    label: "Total Rules",
                     value: redirects.length,
-                    color: '#2563eb',
+                    color: "#2563eb",
                   },
                 ].map((st) => (
                   <div key={st.label} style={s.statBox}>
@@ -402,15 +393,13 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-
-              {/* Table */}
               <div style={s.card}>
                 <div style={s.cardHeader}>
                   <div style={s.cardTitle}>
                     <div style={s.liveDot} />
                     Real-time 404 Errors
                   </div>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>
+                  <span style={{ fontSize: 12, color: "#6b7280" }}>
                     {pending.length} pending
                   </span>
                 </div>
@@ -422,21 +411,21 @@ export default function Dashboard() {
                     <div style={{ fontWeight: 700, marginTop: 8 }}>
                       Tidak ada 404 error!
                     </div>
-                    <div style={{ color: '#6b7280', marginTop: 4 }}>
-                      Toko kamu bersih dari broken links.
+                    <div style={{ color: "#6b7280", marginTop: 4 }}>
+                      Toko kamu bersih.
                     </div>
                   </div>
                 ) : (
-                  <div style={{ overflowX: 'auto' }}>
+                  <div style={{ overflowX: "auto" }}>
                     <table style={s.table}>
                       <thead>
                         <tr>
                           {[
-                            'Broken URL',
-                            'Target URL',
-                            'Hits',
-                            'Terakhir Dilihat',
-                            'Aksi',
+                            "Broken URL",
+                            "Target URL",
+                            "Hits",
+                            "Terakhir",
+                            "Aksi",
                           ].map((h) => (
                             <th key={h} style={s.th}>
                               {h}
@@ -457,14 +446,13 @@ export default function Dashboard() {
                                 onBlur={(ev) =>
                                   updateSuggestion(e.id, ev.target.value)
                                 }
-                                title="Klik untuk edit target URL"
                               />
                             </td>
                             <td style={s.td}>
                               <span
                                 style={{
                                   ...s.badge,
-                                  color: e.hits > 50 ? '#ef4444' : '#6b7280',
+                                  color: e.hits > 50 ? "#ef4444" : "#6b7280",
                                   fontWeight: e.hits > 50 ? 700 : 400,
                                 }}
                               >
@@ -474,12 +462,12 @@ export default function Dashboard() {
                             <td style={s.td}>
                               <span style={s.muted}>
                                 {new Date(e.last_seen).toLocaleDateString(
-                                  'id-ID',
+                                  "id-ID",
                                 )}
                               </span>
                             </td>
                             <td style={s.td}>
-                              <div style={{ display: 'flex', gap: 6 }}>
+                              <div style={{ display: "flex", gap: 6 }}>
                                 <button
                                   style={s.btnSuccess}
                                   onClick={() => fixOne(e)}
@@ -504,12 +492,12 @@ export default function Dashboard() {
             </>
           )}
 
-          {/* ── TAB: REDIRECTS ── */}
-          {tab === 'redirects' && (
+          {/* TAB: REDIRECTS */}
+          {tab === "redirects" && (
             <div style={s.card}>
               <div style={s.cardHeader}>
                 <div style={s.cardTitle}>Redirect Rules</div>
-                <span style={{ fontSize: 12, color: '#6b7280' }}>
+                <span style={{ fontSize: 12, color: "#6b7280" }}>
                   {redirects.length} rules
                 </span>
               </div>
@@ -519,16 +507,16 @@ export default function Dashboard() {
                   <div style={{ fontWeight: 700, marginTop: 8 }}>
                     Belum ada redirect
                   </div>
-                  <div style={{ color: '#6b7280', marginTop: 4 }}>
-                    Tambah redirect atau fix 404 error di tab sebelumnya.
+                  <div style={{ color: "#6b7280", marginTop: 4 }}>
+                    Fix 404 error atau tambah manual.
                   </div>
                 </div>
               ) : (
-                <div style={{ overflowX: 'auto' }}>
+                <div style={{ overflowX: "auto" }}>
                   <table style={s.table}>
                     <thead>
                       <tr>
-                        {['Dari URL', 'Ke URL', 'Type', 'Dibuat', ''].map(
+                        {["Dari URL", "Ke URL", "Type", "Dibuat", ""].map(
                           (h) => (
                             <th key={h} style={s.th}>
                               {h}
@@ -550,17 +538,17 @@ export default function Dashboard() {
                             <span
                               style={{
                                 ...s.badge,
-                                background: '#eff6ff',
-                                color: '#2563eb',
+                                background: "#eff6ff",
+                                color: "#2563eb",
                               }}
                             >
-                              {r.type === 'auto' ? '⚡ Auto' : '↩ 301'}
+                              {r.type === "auto" ? "⚡ Auto" : "↩ 301"}
                             </span>
                           </td>
                           <td style={s.td}>
                             <span style={s.muted}>
                               {new Date(r.created_at).toLocaleDateString(
-                                'id-ID',
+                                "id-ID",
                               )}
                             </span>
                           </td>
@@ -581,12 +569,12 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* ── TAB: PATTERNS ── */}
-          {tab === 'patterns' && (
+          {/* TAB: PATTERNS */}
+          {tab === "patterns" && (
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 300px',
+                display: "grid",
+                gridTemplateColumns: "1fr 300px",
                 gap: 20,
               }}
             >
@@ -605,14 +593,14 @@ export default function Dashboard() {
                           <div style={{ fontWeight: 700, fontSize: 13 }}>
                             {p.name}
                           </div>
-                          <code style={{ fontSize: 11, color: '#6b7280' }}>
+                          <code style={{ fontSize: 11, color: "#6b7280" }}>
                             {p.match_pattern} → {p.target_url}
                           </code>
                           <span
                             style={{
                               ...s.badge,
-                              background: '#f5f3ff',
-                              color: '#7c3aed',
+                              background: "#f5f3ff",
+                              color: "#7c3aed",
                               marginLeft: 8,
                             }}
                           >
@@ -624,10 +612,10 @@ export default function Dashboard() {
                             width: 36,
                             height: 20,
                             borderRadius: 100,
-                            background: p.is_active ? '#10b981' : '#d1d5db',
-                            cursor: 'pointer',
-                            position: 'relative',
-                            transition: '.2s',
+                            background: p.is_active ? "#10b981" : "#d1d5db",
+                            cursor: "pointer",
+                            position: "relative",
+                            transition: ".2s",
                             flexShrink: 0,
                           }}
                           onClick={() => togglePattern(p.id, p.is_active)}
@@ -636,13 +624,13 @@ export default function Dashboard() {
                             style={{
                               width: 14,
                               height: 14,
-                              background: 'white',
-                              borderRadius: '50%',
-                              position: 'absolute',
+                              background: "white",
+                              borderRadius: "50%",
+                              position: "absolute",
                               top: 3,
                               left: p.is_active ? 19 : 3,
-                              transition: '.2s',
-                              boxShadow: '0 1px 3px rgba(0,0,0,.2)',
+                              transition: ".2s",
+                              boxShadow: "0 1px 3px rgba(0,0,0,.2)",
                             }}
                           />
                         </div>
@@ -656,17 +644,15 @@ export default function Dashboard() {
                     ))
                   )}
                 </div>
-
-                {/* Form tambah pattern */}
                 <div style={{ ...s.card, marginTop: 16 }}>
                   <div style={s.cardHeader}>
                     <div style={s.cardTitle}>Buat Pattern Baru</div>
                   </div>
                   <div
                     style={{
-                      padding: '16px 20px',
-                      display: 'flex',
-                      flexDirection: 'column',
+                      padding: "16px 20px",
+                      display: "flex",
+                      flexDirection: "column",
                       gap: 10,
                     }}
                   >
@@ -681,15 +667,15 @@ export default function Dashboard() {
                     </div>
                     <div
                       style={{
-                        display: 'flex',
+                        display: "flex",
                         gap: 10,
-                        alignItems: 'flex-end',
+                        alignItems: "flex-end",
                       }}
                     >
                       <div style={{ flex: 1 }}>
-                        <label style={s.label}>URL Pattern (wildcard *)</label>
+                        <label style={s.label}>URL Pattern</label>
                         <input
-                          style={{ ...s.input, fontFamily: 'monospace' }}
+                          style={{ ...s.input, fontFamily: "monospace" }}
                           value={pMatch}
                           onChange={(e) => setPMatch(e.target.value)}
                           placeholder="/products/lama-*"
@@ -697,7 +683,7 @@ export default function Dashboard() {
                       </div>
                       <div
                         style={{
-                          color: '#9ca3af',
+                          color: "#9ca3af",
                           paddingBottom: 10,
                           fontSize: 18,
                         }}
@@ -707,7 +693,7 @@ export default function Dashboard() {
                       <div style={{ flex: 1 }}>
                         <label style={s.label}>Redirect Ke</label>
                         <input
-                          style={{ ...s.input, fontFamily: 'monospace' }}
+                          style={{ ...s.input, fontFamily: "monospace" }}
                           value={pTarget}
                           onChange={(e) => setPTarget(e.target.value)}
                           placeholder="/collections/all"
@@ -720,17 +706,15 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-
-              {/* Info box */}
-              <div style={{ ...s.card, height: 'fit-content' }}>
+              <div style={{ ...s.card, height: "fit-content" }}>
                 <div style={s.cardHeader}>
-                  <div style={s.cardTitle}>Cara Kerja Pattern</div>
+                  <div style={s.cardTitle}>Cara Kerja</div>
                 </div>
                 <div
                   style={{
                     padding: 16,
                     fontSize: 13,
-                    color: '#374151',
+                    color: "#374151",
                     lineHeight: 1.7,
                   }}
                 >
@@ -739,12 +723,12 @@ export default function Dashboard() {
                   </p>
                   <br />
                   <p>
-                    Kalau URL cocok dengan pattern, redirect{' '}
-                    <strong>dibuat otomatis</strong> — tanpa perlu fix manual.
+                    Kalau URL cocok, redirect <strong>dibuat otomatis</strong>{" "}
+                    tanpa perlu fix manual.
                   </p>
                   <br />
                   <p>
-                    <strong>Contoh pattern:</strong>
+                    <strong>Contoh:</strong>
                   </p>
                   <ul style={{ paddingLeft: 16, marginTop: 6 }}>
                     <li>
@@ -752,9 +736,6 @@ export default function Dashboard() {
                     </li>
                     <li>
                       <code style={{ fontSize: 11 }}>/blogs/arsip/*</code>
-                    </li>
-                    <li>
-                      <code style={{ fontSize: 11 }}>/diskon/*-2023</code>
                     </li>
                   </ul>
                 </div>
@@ -783,7 +764,7 @@ export default function Dashboard() {
               onChange={(e) => setAddTo(e.target.value)}
               placeholder="/halaman-baru"
             />
-            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button
                 style={{ ...s.btnPrimary, flex: 1 }}
                 onClick={addRedirect}
@@ -803,24 +784,24 @@ export default function Dashboard() {
         <div style={s.overlay} onClick={() => setShowBulkModal(false)}>
           <div style={s.modal} onClick={(e) => e.stopPropagation()}>
             <div style={s.modalTitle}>Import Bulk CSV</div>
-            <div style={{ fontSize: 12, color: '#6b7280', marginBottom: 10 }}>
-              Format: <code>/dari-url,/ke-url</code> per baris
+            <div style={{ fontSize: 12, color: "#6b7280", marginBottom: 10 }}>
+              Format: <code>/dari,/ke</code> per baris
             </div>
             <textarea
               style={{
                 ...s.input,
                 minHeight: 120,
-                resize: 'vertical',
-                fontFamily: 'monospace',
+                resize: "vertical",
+                fontFamily: "monospace",
                 fontSize: 12,
               }}
               value={bulkCSV}
               onChange={(e) => setBulkCSV(e.target.value)}
               placeholder={
-                '/produk-lama,/produk-baru\n/koleksi-lama,/koleksi-baru'
+                "/produk-lama,/produk-baru\n/koleksi-lama,/koleksi-baru"
               }
             />
-            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
               <button
                 style={{
                   ...s.btnPrimary,
@@ -830,7 +811,7 @@ export default function Dashboard() {
                 onClick={importCSV}
                 disabled={bulkLoading}
               >
-                {bulkLoading ? 'Mengimport...' : '⬆ Import'}
+                {bulkLoading ? "Mengimport..." : "⬆ Import"}
               </button>
               <button
                 style={s.btnWhite}
@@ -843,17 +824,17 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* TOAST NOTIFICATION */}
+      {/* TOAST */}
       {toast && (
         <div
           style={{
             ...s.toast,
             background:
-              toast.type === 'error'
-                ? '#ef4444'
-                : toast.type === 'warning'
-                  ? '#f59e0b'
-                  : '#10b981',
+              toast.type === "error"
+                ? "#ef4444"
+                : toast.type === "warning"
+                  ? "#f59e0b"
+                  : "#10b981",
           }}
         >
           {toast.msg}
@@ -863,335 +844,367 @@ export default function Dashboard() {
   );
 }
 
+// ── Loading fallback ──
+function DashboardLoading() {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        fontFamily: "system-ui,sans-serif",
+        background: "#f5f6fa",
+        color: "#6b7280",
+        fontSize: 14,
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 32, marginBottom: 12 }}>↩</div>
+        <div>Loading dashboard...</div>
+      </div>
+    </div>
+  );
+}
+
+// ── Export utama — dibungkus Suspense ──
+export default function Dashboard() {
+  return (
+    <Suspense fallback={<DashboardLoading />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
 // ── Styles ──
 const s: Record<string, React.CSSProperties> = {
   root: {
-    display: 'flex',
-    minHeight: '100vh',
+    display: "flex",
+    minHeight: "100vh",
     fontFamily: "'Plus Jakarta Sans',system-ui,sans-serif",
-    background: '#f5f6fa',
+    background: "#f5f6fa",
     fontSize: 14,
   },
   sidebar: {
     width: 220,
-    background: '#0f1117',
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
+    background: "#0f1117",
+    minHeight: "100vh",
+    display: "flex",
+    flexDirection: "column",
     flexShrink: 0,
-    position: 'sticky',
+    position: "sticky",
     top: 0,
-    height: '100vh',
+    height: "100vh",
   },
   logoWrap: {
-    padding: '22px 20px 18px',
-    borderBottom: '1px solid rgba(255,255,255,.07)',
-    display: 'flex',
-    alignItems: 'center',
+    padding: "22px 20px 18px",
+    borderBottom: "1px solid rgba(255,255,255,.07)",
+    display: "flex",
+    alignItems: "center",
     gap: 10,
   },
   logoIcon: {
     width: 34,
     height: 34,
-    background: 'linear-gradient(135deg,#2563eb,#7c3aed)',
+    background: "linear-gradient(135deg,#2563eb,#7c3aed)",
     borderRadius: 9,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     fontSize: 16,
-    color: 'white',
+    color: "white",
     fontWeight: 800,
   },
-  logoText: { fontSize: 15, fontWeight: 800, color: '#fff' },
+  logoText: { fontSize: 15, fontWeight: 800, color: "#fff" },
   storeChip: {
-    margin: '12px 12px 0',
-    background: 'rgba(255,255,255,.05)',
+    margin: "12px 12px 0",
+    background: "rgba(255,255,255,.05)",
     borderRadius: 8,
-    padding: '10px 12px',
-    display: 'flex',
-    alignItems: 'center',
+    padding: "10px 12px",
+    display: "flex",
+    alignItems: "center",
     gap: 8,
   },
   dot: {
     width: 8,
     height: 8,
-    background: '#10b981',
-    borderRadius: '50%',
+    background: "#10b981",
+    borderRadius: "50%",
     flexShrink: 0,
   },
   storeName: {
     fontSize: 12,
-    color: 'rgba(255,255,255,.65)',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    color: "rgba(255,255,255,.65)",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   navItem: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '9px 10px',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    padding: "9px 10px",
     borderRadius: 8,
-    color: 'rgba(255,255,255,.5)',
+    color: "rgba(255,255,255,.5)",
     fontSize: 13,
     fontWeight: 500,
-    cursor: 'pointer',
+    cursor: "pointer",
     marginBottom: 2,
   },
   navActive: {
-    background: 'rgba(37,99,235,.25)',
-    color: '#60a5fa',
+    background: "rgba(37,99,235,.25)",
+    color: "#60a5fa",
     fontWeight: 600,
   },
   navBadge: {
-    color: 'white',
+    color: "white",
     fontSize: 10,
     fontWeight: 700,
-    padding: '2px 6px',
+    padding: "2px 6px",
     borderRadius: 100,
     minWidth: 18,
-    textAlign: 'center',
+    textAlign: "center",
   },
   sidebarStats: {
-    marginTop: 'auto',
-    padding: '16px 12px',
-    borderTop: '1px solid rgba(255,255,255,.07)',
-    display: 'flex',
-    justifyContent: 'space-around',
+    marginTop: "auto",
+    padding: "16px 12px",
+    borderTop: "1px solid rgba(255,255,255,.07)",
+    display: "flex",
+    justifyContent: "space-around",
   },
-  sidebarStat: { textAlign: 'center' },
-  main: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 },
+  sidebarStat: { textAlign: "center" },
+  main: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0 },
   topbar: {
-    background: 'white',
-    borderBottom: '1px solid #e5e7eb',
-    padding: '0 28px',
+    background: "white",
+    borderBottom: "1px solid #e5e7eb",
+    padding: "0 28px",
     height: 58,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    position: 'sticky',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    position: "sticky",
     top: 0,
     zIndex: 20,
   },
   pageTitle: { fontSize: 16, fontWeight: 700 },
-  content: { padding: '24px 28px', flex: 1 },
+  content: { padding: "24px 28px", flex: 1 },
   statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(4,1fr)',
+    display: "grid",
+    gridTemplateColumns: "repeat(4,1fr)",
     gap: 14,
     marginBottom: 20,
   },
   statBox: {
-    background: 'white',
-    border: '1px solid #e5e7eb',
+    background: "white",
+    border: "1px solid #e5e7eb",
     borderRadius: 12,
-    padding: '16px 18px',
+    padding: "16px 18px",
   },
   statLabel: {
     fontSize: 11,
     fontWeight: 700,
-    color: '#6b7280',
-    textTransform: 'uppercase',
-    letterSpacing: '.8px',
+    color: "#6b7280",
+    textTransform: "uppercase",
+    letterSpacing: ".8px",
     marginBottom: 6,
   },
   statNum: { fontSize: 26, fontWeight: 800, letterSpacing: -1 },
   card: {
-    background: 'white',
-    border: '1px solid #e5e7eb',
+    background: "white",
+    border: "1px solid #e5e7eb",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardHeader: {
-    padding: '14px 20px',
-    borderBottom: '1px solid #e5e7eb',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: '#fafafa',
+    padding: "14px 20px",
+    borderBottom: "1px solid #e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    background: "#fafafa",
   },
   cardTitle: {
     fontSize: 14,
     fontWeight: 700,
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
     gap: 8,
   },
-  liveDot: { width: 7, height: 7, background: '#10b981', borderRadius: '50%' },
-  table: { width: '100%', borderCollapse: 'collapse' },
+  liveDot: { width: 7, height: 7, background: "#10b981", borderRadius: "50%" },
+  table: { width: "100%", borderCollapse: "collapse" },
   th: {
-    padding: '10px 16px',
-    textAlign: 'left',
+    padding: "10px 16px",
+    textAlign: "left",
     fontSize: 11,
     fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '.8px',
-    color: '#6b7280',
-    borderBottom: '1px solid #e5e7eb',
-    background: '#fafafa',
-    whiteSpace: 'nowrap',
+    textTransform: "uppercase",
+    letterSpacing: ".8px",
+    color: "#6b7280",
+    borderBottom: "1px solid #e5e7eb",
+    background: "#fafafa",
+    whiteSpace: "nowrap",
   },
-  tr: { borderBottom: '1px solid #f3f4f6' },
-  td: { padding: '12px 16px', verticalAlign: 'middle' },
+  tr: { borderBottom: "1px solid #f3f4f6" },
+  td: { padding: "12px 16px", verticalAlign: "middle" },
   urlRed: {
     fontSize: 12,
-    color: '#ef4444',
-    fontFamily: 'monospace',
-    display: 'block',
+    color: "#ef4444",
+    fontFamily: "monospace",
+    display: "block",
     maxWidth: 220,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   urlGreen: {
     fontSize: 12,
-    color: '#10b981',
-    fontFamily: 'monospace',
-    display: 'block',
+    color: "#10b981",
+    fontFamily: "monospace",
+    display: "block",
     maxWidth: 200,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
   },
   badge: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    padding: '3px 8px',
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "3px 8px",
     borderRadius: 100,
     fontSize: 11,
     fontWeight: 600,
   },
-  muted: { fontSize: 12, color: '#6b7280' },
+  muted: { fontSize: 12, color: "#6b7280" },
   inlineInput: {
-    padding: '5px 8px',
-    border: '1px solid #d1d5db',
+    padding: "5px 8px",
+    border: "1px solid #d1d5db",
     borderRadius: 6,
     fontSize: 12,
-    fontFamily: 'monospace',
-    color: '#374151',
+    fontFamily: "monospace",
+    color: "#374151",
     width: 200,
-    outline: 'none',
+    outline: "none",
   },
   patternRow: {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
     gap: 12,
-    padding: '14px 20px',
-    borderBottom: '1px solid #f3f4f6',
+    padding: "14px 20px",
+    borderBottom: "1px solid #f3f4f6",
   },
   patternIcon: {
     width: 36,
     height: 36,
-    background: '#f5f3ff',
+    background: "#f5f3ff",
     borderRadius: 8,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
     fontSize: 16,
     flexShrink: 0,
   },
   btnPrimary: {
-    padding: '8px 16px',
-    background: '#2563eb',
-    color: 'white',
-    border: 'none',
+    padding: "8px 16px",
+    background: "#2563eb",
+    color: "white",
+    border: "none",
     borderRadius: 8,
     fontSize: 13,
     fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
   btnWhite: {
-    padding: '8px 16px',
-    background: 'white',
-    color: '#374151',
-    border: '1px solid #d1d5db',
+    padding: "8px 16px",
+    background: "white",
+    color: "#374151",
+    border: "1px solid #d1d5db",
     borderRadius: 8,
     fontSize: 13,
     fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
   btnSuccess: {
-    padding: '5px 12px',
-    background: '#ecfdf5',
-    color: '#10b981',
-    border: '1px solid #a7f3d0',
+    padding: "5px 12px",
+    background: "#ecfdf5",
+    color: "#10b981",
+    border: "1px solid #a7f3d0",
     borderRadius: 6,
     fontSize: 12,
     fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
   btnGhost: {
-    padding: '5px 12px',
-    background: 'transparent',
-    color: '#6b7280',
-    border: '1px solid #e5e7eb',
+    padding: "5px 12px",
+    background: "transparent",
+    color: "#6b7280",
+    border: "1px solid #e5e7eb",
     borderRadius: 6,
     fontSize: 12,
     fontWeight: 600,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
   btnDanger: {
-    padding: '5px 10px',
-    background: '#fef2f2',
-    color: '#ef4444',
-    border: '1px solid #fecaca',
+    padding: "5px 10px",
+    background: "#fef2f2",
+    color: "#ef4444",
+    border: "1px solid #fecaca",
     borderRadius: 6,
     fontSize: 12,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+    cursor: "pointer",
+    fontFamily: "inherit",
   },
   input: {
-    width: '100%',
-    padding: '9px 12px',
-    border: '1px solid #d1d5db',
+    width: "100%",
+    padding: "9px 12px",
+    border: "1px solid #d1d5db",
     borderRadius: 8,
     fontSize: 13,
-    fontFamily: 'inherit',
-    color: '#111827',
-    outline: 'none',
-    boxSizing: 'border-box',
+    fontFamily: "inherit",
+    color: "#111827",
+    outline: "none",
+    boxSizing: "border-box",
   },
   label: {
     fontSize: 11,
     fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '.7px',
-    color: '#6b7280',
-    display: 'block',
+    textTransform: "uppercase",
+    letterSpacing: ".7px",
+    color: "#6b7280",
+    display: "block",
     marginBottom: 5,
   },
   overlay: {
-    position: 'fixed',
+    position: "fixed",
     inset: 0,
-    background: 'rgba(0,0,0,.4)',
+    background: "rgba(0,0,0,.4)",
     zIndex: 100,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
   },
   modal: {
-    background: 'white',
+    background: "white",
     borderRadius: 16,
     padding: 28,
     width: 420,
-    boxShadow: '0 10px 40px rgba(0,0,0,.15)',
+    boxShadow: "0 10px 40px rgba(0,0,0,.15)",
   },
   modalTitle: { fontSize: 16, fontWeight: 800, marginBottom: 16 },
   toast: {
-    position: 'fixed',
+    position: "fixed",
     bottom: 24,
     right: 24,
-    color: 'white',
-    padding: '12px 20px',
+    color: "white",
+    padding: "12px 20px",
     borderRadius: 10,
     fontSize: 13,
     fontWeight: 600,
-    boxShadow: '0 4px 16px rgba(0,0,0,.2)',
+    boxShadow: "0 4px 16px rgba(0,0,0,.2)",
     zIndex: 200,
   },
-  empty: { padding: '50px 20px', textAlign: 'center', color: '#6b7280' },
+  empty: { padding: "50px 20px", textAlign: "center", color: "#6b7280" },
 };
