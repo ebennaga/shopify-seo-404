@@ -27,7 +27,7 @@
   };
 
   // Kirim laporan ke app backend
-  fetch("https://298b-43-252-237-189.ngrok-free.app/api/errors/track", {
+  fetch("https://shopify-seo-404-qck2.vercel.app/api/errors/track", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
